@@ -1,0 +1,30 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "ex2: gcc build task",							// this can be whatever I want
+			"command": "/usr/bin/gcc",
+			// args are all the words in the gcc command
+			//		WATCH OUT: parameter 'g' is only to enable debugging, test compilation without it before submission
+			//		WATCH OUT: when debugging, if variables are 'optimizes out', compile with 'O0' instead of 'O3'
+			//		WATCH OUT: compilation works only if VSCode is "focused" on a file from the destination directory
+			"args": [	
+				// "-g",												
+				"-O3", "-D_POSIX_C_SOURCE=200809", "-Wall", "-std=c11", "shell.c", "myshell.c",
+				"-o", "${fileDirname}/myshell"
+			],
+			"options": {
+				"cwd": "${fileDirname}"								// directory where command runs
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/gcc"
+		}
+	]
+}
