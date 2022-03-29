@@ -18,6 +18,7 @@ open questions:
 
 BEFORE SUBMISSION:
 - do Ctrl+F on "handle error"
+- make sure compilation has no warnings
 - change compilation command! (erase it and rwerite, so you don't blow it)
 - test on nova (using VSCode's remote-ssh)
 - push to github
