@@ -1,9 +1,29 @@
+#include <stdlib.h>
 #include <stdio.h> 
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
+
+void handle_sigint(int sig_num)
+{
+}
+
+
+void use_sigaction()
+{
+    struct sigaction sigterm_action;
+    memset(&sigterm_action, 0, sizeof(sigterm_action));
+    
+    sigterm_action.sa_flags = SA_RESTART;
+    sigterm_action.sa_handler = &handle_sigint;
+    
+    sigfillset(&sigterm_action.sa_mask);
+    
+    sigaction(SIGINT, &sigterm_action, NULL);
+}
 
 
 /*
@@ -75,7 +95,10 @@ int process_arglist(int count, char** arglist)
 
             pid = fork();
             if (pid == 0)
+            {
+                use_sigaction();
                 execvp(arglist[0], arglist);
+            }
             
             // NO WAITING 
         }
@@ -85,14 +108,14 @@ int process_arglist(int count, char** arglist)
                 arglist[count-2][0] == 62 && 
                 arglist[count-2][1] == 62)
                 {
-                    // remove '>>' from arglist
+                    // remove '>>' from arglist (effectively removes everything after '>>')
                     arglist[count-2] = NULL;
 
                     pid = fork();
                     if (pid == 0)
                     {
                         // create output file, and redirect program output to it
-                        output_file_fs = open(arglist[count-1], O_WRONLY | O_CREAT | O_APPEND, S_IRWXO);
+                        output_file_fs = open(arglist[count-1], O_RDWR | O_CREAT | O_APPEND, 0666);
                         dup2(output_file_fs, 1);
                         close(output_file_fs);
 
@@ -124,6 +147,7 @@ int process_arglist(int count, char** arglist)
 
 int prepare(void)
 {
+    use_sigaction();
     return 0;
 }
 

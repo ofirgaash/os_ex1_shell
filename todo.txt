@@ -1,5 +1,8 @@
 
 TODO:
+
+- fix '>>' case - file is created with no reading permissions!
+
 - handle errors of following functions:
     - pipe (on error, returns -1)
     - fork (on error, pid < 0)
@@ -7,6 +10,7 @@ TODO:
     - waitpid (on error, returns -1)
     - open (on error, returns -1)
     - dup2 (?)
+
 
 open questions:
 - run in background - do I need to suppress the stdout ??
