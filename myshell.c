@@ -21,14 +21,14 @@ void handle_sigint(int sig_num)
 
 void use_sigaction()
 {
-    struct sigaction sigterm_action;
-    memset(&sigterm_action, 0, sizeof(sigterm_action));
-    
+     struct sigaction sigterm_action;
+    // memset(&sigterm_action, 0, sizeof(sigterm_action));
+
     sigterm_action.sa_flags = SA_RESTART;
     sigterm_action.sa_handler = &handle_sigint;
-    
-    sigfillset(&sigterm_action.sa_mask);
-    
+
+    sigfillset(&sigterm_action.sa_mask);    // when handler is running, block all signals
+
     sigaction(SIGINT, &sigterm_action, NULL);
 }
 
@@ -71,7 +71,7 @@ int process_arglist(int count, char** arglist)
             return 0;
         }
 
-        // create the 2 processes
+        // create the first child
         pid = fork();
         if (pid < 0)
         {
@@ -80,6 +80,7 @@ int process_arglist(int count, char** arglist)
         }
         if (pid == 0)
         {
+            // this is the first child - make pipe adjustments, then run cmd
             if (close(pipe_fds[0]) == -1)
                 exit_on_error("error when closing pipe fs\n");
             if (dup2(pipe_fds[1], 1) == -1)
@@ -89,6 +90,7 @@ int process_arglist(int count, char** arglist)
         }
         if (pid > 0)
         {
+            // create the second child
             pid2 = fork();
             if (pid < 0)
             {
@@ -97,6 +99,7 @@ int process_arglist(int count, char** arglist)
             }
             if (pid2 == 0)
             {
+                // this is the second child - make pipe adjustments, then run cmd
                 if (close(pipe_fds[1]) == -1)
                     exit_on_error("error when closing pipe fs\n");
                 if (dup2(pipe_fds[0], 0) == -1)
@@ -106,6 +109,7 @@ int process_arglist(int count, char** arglist)
             }
             if (pid > 0)
             {
+                // close two pipes in the parent process
                 if (close(pipe_fds[0]) == -1)
                 {
                     fprintf(stderr, "%s", "error when closing pipe fs\n");
@@ -117,6 +121,7 @@ int process_arglist(int count, char** arglist)
                     return 0;
                 }
                 
+                // wait for two child processes to end
                 if (waitpid(pid, &status, 0) == -1)
                     if (errno != ECHILD && errno != EINTR)
                     {
@@ -195,6 +200,7 @@ int process_arglist(int count, char** arglist)
                             }
                     }
                 }
+                // if you reach this point, then you process a REGULAR CMD
                 else
                 {
                     pid = fork();

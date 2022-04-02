@@ -1,28 +1,18 @@
 
 TODO:
 
-- handle errors of following functions:
-    - pipe (on error, returns -1)
-    - fork (on error, pid < 0)
-    - execvp (on error, returns -1)
-    - waitpid (on error, returns -1)
-    - open (on error, returns -1)
-    - dup2 (?)
-
 - deal with sigint
 
 - deal with zombies
 
-- after dealing with (1) sigint  (2) zombies , update error handling accordingly
-
-
-open questions:
-- run in background - do I need to suppress the stdout ??
-
+- after dealing with 
+    (1) sigint  
+    (2) zombies 
+  update error handling accordingly
 
 BEFORE SUBMISSION:
-- do Ctrl+F on "handle error"
 - make sure compilation has no warnings
 - change compilation command! (erase it and rwerite, so you don't blow it)
 - test on nova (using VSCode's remote-ssh)
 - push to github
+- now, SUBMIT IN MOODLE
