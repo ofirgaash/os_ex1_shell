@@ -6,11 +6,18 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <errno.h>
+
+void exit_on_error(char *err_str)
+{
+    fprintf(stderr, "%s", err_str);
+    exit(1);
+}
+
 
 void handle_sigint(int sig_num)
 {
 }
-
 
 void use_sigaction()
 {
@@ -58,31 +65,70 @@ int process_arglist(int count, char** arglist)
         arglist[pipe_ind] = NULL;   
 
         // create the pipe to be used
-        pipe(pipe_fds);             
+        if (pipe(pipe_fds) == -1)
+        {
+            fprintf(stderr, "%s", "error when creating pipe\n");
+            return 0;
+        }
 
         // create the 2 processes
         pid = fork();
+        if (pid < 0)
+        {
+            fprintf(stderr, "%s", "fork failed\n");
+            return 0;
+        }
         if (pid == 0)
         {
-            close(pipe_fds[0]);
-            dup2(pipe_fds[1], 1);
-            execvp(arglist[0], arglist);
+            if (close(pipe_fds[0]) == -1)
+                exit_on_error("error when closing pipe fs\n");
+            if (dup2(pipe_fds[1], 1) == -1)
+                exit_on_error("error when using dup2 for piping\n");
+            if (execvp(arglist[0], arglist) == -1)
+                exit_on_error("error on execvp (maybe invalid cmd)\n");
         }
         if (pid > 0)
         {
             pid2 = fork();
+            if (pid < 0)
+            {
+                fprintf(stderr, "%s", "fork failed\n");
+                return 0;
+            }
             if (pid2 == 0)
             {
-                close(pipe_fds[1]);
-                dup2(pipe_fds[0], 0);
-                execvp(arglist[pipe_ind + 1], arglist + pipe_ind + 1);
+                if (close(pipe_fds[1]) == -1)
+                    exit_on_error("error when closing pipe fs\n");
+                if (dup2(pipe_fds[0], 0) == -1)
+                    exit_on_error("error when using dup2 for piping\n");
+                if (execvp(arglist[pipe_ind + 1], arglist + pipe_ind + 1) == -1)
+                    exit_on_error("error on execvp (maybe invalid cmd)\n");
             }
-            else
+            if (pid > 0)
             {
-                close(pipe_fds[0]);
-                close(pipe_fds[1]);
-                waitpid(pid, &status, 0);
-                waitpid(pid2, &status2, 0);
+                if (close(pipe_fds[0]) == -1)
+                {
+                    fprintf(stderr, "%s", "error when closing pipe fs\n");
+                    return 0;
+                }
+                if (close(pipe_fds[1]) == -1)
+                {
+                    fprintf(stderr, "%s", "error when closing pipe fs\n");
+                    return 0;
+                }
+                
+                if (waitpid(pid, &status, 0) == -1)
+                    if (errno != ECHILD && errno != EINTR)
+                    {
+                        fprintf(stderr, "%s", "error in wait() of parent process\n");
+                        return 0;
+                    }
+                if (waitpid(pid2, &status2, 0) == -1)
+                    if (errno != ECHILD && errno != EINTR)
+                    {
+                        fprintf(stderr, "%s", "error in wait() of parent process\n");
+                        return 0;
+                    }
             }
         }
     }
@@ -94,17 +140,24 @@ int process_arglist(int count, char** arglist)
             arglist[count-1] = NULL;
 
             pid = fork();
+            if (pid < 0)
+            {
+                fprintf(stderr, "%s", "fork failed\n");
+                return 0;
+            }
             if (pid == 0)
             {
                 use_sigaction();
-                execvp(arglist[0], arglist);
+                if (execvp(arglist[0], arglist) == -1)
+                    exit_on_error("error on execvp (maybe invalid cmd)\n");
             }
             
             // NO WAITING 
         }
         else
             // if the cmd contains ">>", process the redirection cmd
-            if (strlen(arglist[count-2]) == 2 && 
+            if (count >= 2 && 
+                strlen(arglist[count-2]) == 2 && 
                 arglist[count-2][0] == 62 && 
                 arglist[count-2][1] == 62)
                 {
@@ -112,33 +165,58 @@ int process_arglist(int count, char** arglist)
                     arglist[count-2] = NULL;
 
                     pid = fork();
+                    if (pid < 0)
+                    {
+                        fprintf(stderr, "%s", "fork failed\n");
+                        return 0;
+                    }
                     if (pid == 0)
                     {
                         // create output file, and redirect program output to it
                         output_file_fs = open(arglist[count-1], O_RDWR | O_CREAT | O_APPEND, 0666);
-                        dup2(output_file_fs, 1);
-                        close(output_file_fs);
+                        if (output_file_fs == -1)
+                            exit_on_error("error when opening file\n");
+                        if (dup2(output_file_fs, 1) == -1)
+                            exit_on_error("error when using dup on file\n");
+                        if (close(output_file_fs) == -1)
+                            exit_on_error("error when closing file\n");
 
                         // change image to requested program
-                        execvp(arglist[0], arglist);
+                        if (execvp(arglist[0], arglist) == -1)
+                            exit_on_error("error on execvp (maybe invalid cmd)\n");
                     }
                     if (pid > 0)
                     {
-                        waitpid(pid, &status, 0);
+                        if (waitpid(pid, &status, 0) == -1)
+                            if (errno != ECHILD && errno != EINTR)
+                            {
+                                fprintf(stderr, "%s", "error in wait() of parent process\n");
+                                return 0;
+                            }
                     }
                 }
                 else
                 {
                     pid = fork();
+                    if (pid < 0)
+                    {
+                        fprintf(stderr, "%s", "fork failed\n");
+                        return 0;
+                    }
                     if (pid == 0)
                     {
-                        execvp(arglist[0], arglist);
+                        if (execvp(arglist[0], arglist) == -1)
+                            exit_on_error("error on execvp (maybe invalid cmd)\n");
                     }
                     if (pid > 0)
                     {
-                        waitpid(pid, &status, 0);
+                        if (waitpid(pid, &status, 0) == -1)
+                            if (errno != ECHILD && errno != EINTR)
+                            {
+                                fprintf(stderr, "%s", "error in wait() of parent process\n");
+                                return 0;
+                            }
                     }
-
                 }
 
     return 1;
