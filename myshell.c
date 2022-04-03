@@ -80,6 +80,9 @@ int process_arglist(int count, char** arglist)
         }
         if (pid == 0)
         {
+            // make child sensitive to ctrl-c
+                        signal(SIGINT, SIG_DFL);
+                        
             // this is the first child - make pipe adjustments, then run cmd
             if (close(pipe_fds[0]) == -1)
                 exit_on_error("error when closing pipe fs\n");
@@ -152,7 +155,8 @@ int process_arglist(int count, char** arglist)
             }
             if (pid == 0)
             {
-                use_sigaction();
+                // use_sigaction();
+                signal(SIGINT, SIG_IGN);
                 if (execvp(arglist[0], arglist) == -1)
                     exit_on_error("error on execvp (maybe invalid cmd)\n");
             }
@@ -177,6 +181,9 @@ int process_arglist(int count, char** arglist)
                     }
                     if (pid == 0)
                     {
+                        // make child sensitive to ctrl-c
+                        signal(SIGINT, SIG_DFL);
+
                         // create output file, and redirect program output to it
                         output_file_fs = open(arglist[count-1], O_RDWR | O_CREAT | O_APPEND, 0666);
                         if (output_file_fs == -1)
@@ -211,6 +218,9 @@ int process_arglist(int count, char** arglist)
                     }
                     if (pid == 0)
                     {
+                        // make child sensitive to ctrl-c
+                        signal(SIGINT, SIG_DFL);
+                        
                         if (execvp(arglist[0], arglist) == -1)
                             exit_on_error("error on execvp (maybe invalid cmd)\n");
                     }
@@ -231,7 +241,8 @@ int process_arglist(int count, char** arglist)
 
 int prepare(void)
 {
-    use_sigaction();
+    // use_sigaction();
+    signal(SIGINT, SIG_IGN);
     return 0;
 }
 
